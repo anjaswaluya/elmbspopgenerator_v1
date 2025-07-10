@@ -1,103 +1,100 @@
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
+import io
 
-# ------------------- Konfigurasi Streamlit -------------------
-st.set_page_config(page_title="POP Generator Optimal", layout="centered")
+st.set_page_config(layout="wide")
 st.title("POP Generator Optimal")
 
-# Slider pada sidebar untuk mengatur ukuran font judul produk
-font_size = st.sidebar.slider(
-    "Ukuran Font Judul", min_value=10, max_value=200, value=50, step=1
-)
+# === Sidebar ===
+st.sidebar.header("Data Produk")
+nama_produk = st.sidebar.text_input("Nama Produk", "GRANIT POLISHED 80X160")
+harga_awal = st.sidebar.number_input("Harga Awal", 0, step=1000, value=269141)
+harga_promo = st.sidebar.number_input("Harga Promo", 0, step=1000, value=248013)
+satuan = st.sidebar.text_input("Satuan (ex: m, pcs)", "m")
+diskon_utama = st.sidebar.number_input("Diskon Utama (%)", 0, 100, 5)
+diskon_member = st.sidebar.number_input("Diskon Member (%)", 0, 100, 3)
 
-# Input: Unggah hingga 6 logo produk (JPG/PNG)
-uploaded_files = st.file_uploader(
-    "Upload Logo Produk (JPG/PNG, maksimal 6 file)", 
-    type=["jpg", "jpeg", "png"], accept_multiple_files=True
-)
+# === Upload ===
+st.sidebar.header("Upload Gambar")
+background_file = st.sidebar.file_uploader("Background (rasio A4)", type=["jpg", "jpeg", "png"])
+logo_files = st.sidebar.file_uploader("Upload Logo Produk (max 6)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-# Input: Judul produk (teks)
-product_title = st.text_input("Judul Produk:")
+# === Slider Pengaturan ===
+st.sidebar.header("Pengaturan Real-Time")
+uk_lingkaran = st.sidebar.slider("Ukuran Lingkaran Diskon", 50, 300, 120)
+uk_font_diskon = st.sidebar.slider("Ukuran Font Angka Diskon", 20, 150, 80)
+uk_font_label = st.sidebar.slider("Ukuran Font Label Diskon", 10, 80, 30)
+uk_font_judul = st.sidebar.slider("Ukuran Font Judul", 10, 200, 60)
 
-# Proses hanya jika ada minimal satu file logo yang diunggah
-if uploaded_files and product_title:
-    # Batasi maksimal 6 logo
-    if len(uploaded_files) > 6:
-        st.warning("Hanya diperbolehkan maksimal 6 logo. Menggunakan 6 logo pertama saja.")
-        uploaded_files = uploaded_files[:6]
-    
-    # Baca logo menggunakan PIL
-    logos = [Image.open(file) for file in uploaded_files]
+# === Fungsi Center Text ===
+def center_text(draw, text, font, x, y):
+    w, h = draw.textsize(text, font=font)
+    draw.text((x - w/2, y - h/2), text, font=font, fill="white")
 
-    # Tentukan ukuran kanvas dengan rasio A4 (lebar x tinggi)
-    canvas_width = 1000  # lebar kanvas (px)
-    canvas_height = int(canvas_width * 1.4142)  # tinggi = lebar * sqrt(2) untuk rasio A4
-    image = Image.new("RGB", (canvas_width, canvas_height), color="white")
-    draw = ImageDraw.Draw(image)
+# === Proses Gambar ===
+if background_file is not None:
+    bg = Image.open(background_file).convert("RGBA")
+    bg_w, bg_h = bg.size
 
-    # Atur dimensi logo (seragam tinggi) dan hitung total lebar semua logo
-    if logos:
-        # Tinggi maksimal untuk semua logo (misal 20% tinggi kanvas)
-        logo_height = int(canvas_height * 0.2)
-        resized_logos = []
-        total_logos_width = 0
+    draw = ImageDraw.Draw(bg)
 
-        for logo in logos:
-            # Rasio skala untuk logo
-            ratio = logo_height / logo.height
-            new_width = int(logo.width * ratio)
-            # Ubah ukuran logo agar memiliki tinggi yang sama
-            logo_resized = logo.resize((new_width, logo_height), resample=Image.ANTIALIAS)
-            resized_logos.append(logo_resized)
-            total_logos_width += new_width
+    # === Logo Mitra (static di atas) ===
+    mitra_logo = Image.open("mitra_logo.png").convert("RGBA").resize((int(bg_w*0.25), int(bg_h*0.07)))
+    bg.paste(mitra_logo, (int(bg_w/2 - mitra_logo.width/2), int(bg_h*0.03)), mitra_logo)
 
-        # Hitung jarak/gap horizontal antara logo
-        n = len(resized_logos)
-        gap = (canvas_width - total_logos_width) // (n + 1) if n > 0 else 0
-        current_x = gap
-        logo_y = int(canvas_height * 0.05)  # margin atas (5% dari tinggi kanvas)
+    # === Judul Produk ===
+    font_judul = ImageFont.truetype("arialbd.ttf", uk_font_judul)
+    draw.text((bg_w/2, int(bg_h*0.15)), nama_produk, font=font_judul, fill="black", anchor="mm")
 
-        # Tempelkan logo ke kanvas secara horizontal berurutan
-        for logo_resized in resized_logos:
-            image.paste(logo_resized, (current_x, logo_y))
-            current_x += logo_resized.width + gap
+    # === Logo Produk ===
+    if logo_files:
+        logo_area_y = int(bg_h * 0.2)
+        logo_max_h = int(bg_h * 0.08)
+        total_logos = len(logo_files)
+        space_between = int(bg_w * 0.02)
+        logo_width = int((bg_w * 0.5 - (space_between * (total_logos - 1))) / total_logos)
 
-    # Siapkan font untuk teks judul produk (Arial atau default)
-    try:
-        font = ImageFont.truetype("arial.ttf", font_size)
-    except IOError:
-        font = ImageFont.load_default()
+        start_x = int(bg_w / 2 - (logo_width * total_logos + space_between * (total_logos - 1)) / 2)
 
-    # Ukur dimensi teks untuk penempatan di tengah horizontal
-    text = product_title
-    text_width, text_height = draw.textsize(text, font=font)
+        for i, logo_file in enumerate(logo_files[:6]):
+            logo = Image.open(logo_file).convert("RGBA")
+            ratio = logo.height / logo.width
+            new_h = logo_max_h
+            new_w = int(new_h / ratio)
+            logo_resized = logo.resize((new_w, new_h), resample=Image.Resampling.LANCZOS)
+            pos_x = start_x + i * (new_w + space_between)
+            bg.paste(logo_resized, (pos_x, logo_area_y), logo_resized)
 
-    # Jika teks terlalu lebar, skala ukuran font agar tidak melebihi kanvas (opsional)
-    if text_width > canvas_width * 0.9:
-        scale = (canvas_width * 0.9) / text_width
-        new_size = max(int(font_size * scale), 1)
-        try:
-            font = ImageFont.truetype("arial.ttf", new_size)
-        except IOError:
-            font = ImageFont.load_default()
-        text_width, text_height = draw.textsize(text, font=font)
+    # === Lingkaran Diskon ===
+    lingkaran_x = int(bg_w * 0.35)
+    lingkaran_y = int(bg_h * 0.4)
+    draw.ellipse([
+        (lingkaran_x - uk_lingkaran, lingkaran_y - uk_lingkaran),
+        (lingkaran_x + uk_lingkaran, lingkaran_y + uk_lingkaran)
+    ], fill="red")
 
-    # Posisi teks: horizontal center, vertical di bawah logo
-    text_x = (canvas_width - text_width) // 2
-    # Jika ada logo, letakkan teks tepat di bawah logo; jika tidak ada logo, bisa di tengah kanvas
-    if logos:
-        # Jarak teks di bawah logo (misal 5% dari tinggi logo area)
-        vertical_gap = int(canvas_height * 0.05)
-        text_y = logo_y + logo_height + vertical_gap
-    else:
-        # Jika tidak ada logo, tempatkan di tengah gambar
-        text_y = (canvas_height - text_height) // 2
+    font_diskon = ImageFont.truetype("arialbd.ttf", uk_font_diskon)
+    font_label = ImageFont.truetype("arial.ttf", uk_font_label)
 
-    # Gambar teks judul produk di kanvas
-    draw.text((text_x, text_y), text, font=font, fill="black")
+    center_text(draw, f"{diskon_utama}%", font_diskon, lingkaran_x, lingkaran_y)
+    center_text(draw, "DISKON", font_label, lingkaran_x, lingkaran_y - uk_font_diskon)
 
-    # Tampilkan hasil di aplikasi Streamlit
-    st.image(image, caption="Hasil Desain POP", use_column_width=True)
-else:
-    st.info("Silakan unggah minimal satu logo dan masukkan judul produk untuk membuat desain.")
+    # === Harga Coret + Promo ===
+    font_harga_kecil = ImageFont.truetype("arial.ttf", 28)
+    font_harga_besar = ImageFont.truetype("arialbd.ttf", 48)
 
+    harga_area_y = int(bg_h * 0.75)
+
+    draw.text((bg_w/2 - 80, harga_area_y), f"Rp {harga_awal:,}/{satuan}", font=font_harga_kecil, fill="red")
+    draw.line([
+        (bg_w/2 - 85, harga_area_y + 10),
+        (bg_w/2 + 55, harga_area_y + 10)
+    ], fill="red", width=2)
+
+    draw.text((bg_w/2 - 60, harga_area_y + 40), f"Rp. {harga_promo:,}/{satuan}", font=font_harga_besar, fill="red")
+
+    # === Output ===
+    st.image(bg, use_column_width=True)
+    buf = io.BytesIO()
+    bg.save(buf, format="PNG")
+    st.download_button("Download POP", data=buf.getvalue(), file_name="pop_final.png", mime="image/png")
