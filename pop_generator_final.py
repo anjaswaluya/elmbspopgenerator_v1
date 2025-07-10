@@ -4,7 +4,7 @@ import io
 
 # Setup
 st.set_page_config(page_title="POP Generator by ElMBS", layout="wide")
-st.title("🎯 POP Generator Final Fix")
+st.title("🎯 POP Generator aLA ALA V1")
 
 # Sidebar UI
 with st.sidebar:
