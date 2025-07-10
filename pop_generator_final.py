@@ -83,9 +83,10 @@ if bg_file and logos:
     draw.text((x_old, y_old + oh + int(H * 0.02)), new_txt, fill="red", font=font_new)
 
     # Output
-    st.image(bg, use_column_width=True)
+    st.image(bg, width=400)  # ✅ FIXED: Preview kecil biar gak ngegas satu layar
     buf = io.BytesIO()
     bg.save(buf, format="PNG")
     st.download_button("⬇️ Download POP", buf.getvalue(), "POP_final.png", "image/png")
+
 else:
     st.info("Upload background + minimal 1 logo dulu ya abangku!")
