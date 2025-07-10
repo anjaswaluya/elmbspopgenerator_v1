@@ -47,10 +47,10 @@ if bg_file:
     logo_h   = int(H * 0.13)
     strike_sz= max(16, int(W * 0.02))
     promo_sz = max(32, int(W * 0.045))
-    prod_sz  = max(28, int(W * 0.035))
     f_strike = load_font(strike_sz)
     f_promo  = load_font(promo_sz)
-    f_prod   = load_font(prod_sz)
+
+    y_text_produk = H - int(H * 0.08)  # default jika tak ada logo
 
     # ==== Render LOGO ====
     if logo_files:
@@ -64,6 +64,7 @@ if bg_file:
             im.thumbnail((logo_h, logo_h))
             x = spacing * (i+1) + logo_h * i
             bg.paste(im, (x, y0), im)
+        y_text_produk = y0 + logo_h + int(H * 0.02)
 
     # ==== Render DISKON ====
     diskons = [
@@ -93,8 +94,17 @@ if bg_file:
     t1 = format_rp(harga_promo) + f" /{satuan_harga}"
     center_text(draw, t1, f_promo, cx, base_y + int(promo_sz * 0.8), "black")
 
-    # ==== Nama Produk ====
-    center_text(draw, nama_produk.upper(), f_prod, cx, H - int(H * 0.08), "black")
+    # ==== Nama Produk (di bawah logo atau fallback bawah) ====
+    max_width_ratio = 0.85
+    max_font_size = int(W * 0.06)
+    min_font_size = 12
+    text = nama_produk.upper()
+    for sz in range(max_font_size, min_font_size, -1):
+        f = load_font(sz)
+        bbox = draw.textbbox((0, 0), text, font=f)
+        if bbox[2] - bbox[0] <= W * max_width_ratio:
+            center_text(draw, text, f, cx, y_text_produk, "black")
+            break
 
     # ==== Output ====
     st.image(bg, use_container_width=True)
