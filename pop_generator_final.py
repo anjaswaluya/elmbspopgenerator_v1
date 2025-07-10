@@ -2,7 +2,6 @@ import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 import io
 
-# Page setup
 st.set_page_config(page_title="ELMBS POP Generator", layout="centered")
 
 # ===== Sidebar =====
@@ -18,11 +17,7 @@ with st.sidebar:
     st.markdown("---")
     st.header("🖼️ Upload Gambar")
     bg_file    = st.file_uploader("Background (rasio apa pun)", type=["jpg","png","jpeg"])
-    logo_files = st.file_uploader(
-        "Logo Produk (max 6)", 
-        type=["png","jpg","jpeg"], 
-        accept_multiple_files=True
-    )
+    logo_files = st.file_uploader("Logo Produk (max 6)", type=["png","jpg","jpeg"], accept_multiple_files=True)
 
 # ===== Helpers =====
 def format_rp(x):
@@ -34,84 +29,78 @@ def load_font(sz):
     except:
         return ImageFont.load_default()
 
-def center_text(draw, text, font, cx, y, fill):
-    bbox = draw.textbbox((0,0), text, font=font)
-    w = bbox[2] - bbox[0]
-    draw.text((cx - w//2, y), text, font=font, fill=fill)
+def center_text(draw, text, font, cx, cy, fill):
+    bbox = draw.textbbox((0, 0), text, font=font)
+    w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    draw.text((cx - w//2, cy - h//2), text, font=font, fill=fill)
 
-# ===== Main Preview =====
+# ===== Main Logic =====
 if bg_file:
     bg = Image.open(bg_file).convert("RGBA")
     W, H = bg.size
     draw = ImageDraw.Draw(bg)
     cx, cy = W//2, int(H * 0.45)
 
-    # Dynamic sizing
-    r        = int(W * 0.20)
-    num_sz   = max(20, int(r * 0.6))
-    lbl_sz   = max(10, int(r * 0.2))
-    strike_sz= max(12, int(num_sz * 0.3))
-    promo_sz = max(num_sz, int(r * 0.8))
-    prod_sz  = max(30, int(r * 0.4))
-
-    f_num    = load_font(num_sz)
-    f_lbl    = load_font(lbl_sz)
+    # Sizing
+    r        = int(W * 0.15)  # lingkaran radius
+    spacing  = int(W * 0.05)
+    logo_h   = int(H * 0.13)
+    strike_sz= max(16, int(W * 0.02))
+    promo_sz = max(32, int(W * 0.045))
+    prod_sz  = max(28, int(W * 0.035))
     f_strike = load_font(strike_sz)
     f_promo  = load_font(promo_sz)
     f_prod   = load_font(prod_sz)
 
-    # Logos: limit 6, distribute with equal margins
+    # ==== Render LOGO ====
     if logo_files:
         logos = logo_files[:6]
-        if len(logo_files) > 6:
-            st.warning("Maksimum 6 logo yang akan ditampilkan.")
         n = len(logos)
-        logo_h = int(H * 0.15)
-        total_logo_w = logo_h * n
-        # equal spacing around and between
-        spacing = (W - total_logo_w) / (n + 1)
-        y0 = cy - r - logo_h - int(H * 0.02)
+        total_w = n * logo_h
+        spacing = (W - total_w) // (n + 1)
+        y0 = cy - r - logo_h - int(H * 0.025)
         for i, f in enumerate(logos):
             im = Image.open(f).convert("RGBA")
             im.thumbnail((logo_h, logo_h))
-            x0 = int(spacing * (i + 1) + logo_h * i)
-            bg.paste(im, (x0, y0), im)
+            x = spacing * (i+1) + logo_h * i
+            bg.paste(im, (x, y0), im)
 
-    # Discount circles and text
-    for dx, color, val, lbl in [
-        (-r - int(W*0.02), "red",    f"{diskon_utama}%", "DISKON"),
-        ( r + int(W*0.02), "blue", f"+{diskon_member}%", "MEMBER")
-    ]:
-        x0 = cx + dx
-        draw.ellipse([x0 - r, cy - r, x0 + r, cy + r], fill=color)
-        center_text(draw, val, f_num, x0, cy - int(num_sz * 0.3), "white")
-        bbox = draw.textbbox((0,0), lbl, font=f_lbl)
-        h_lbl = bbox[3] - bbox[1]
-        center_text(draw, lbl, f_lbl, x0, cy + int(r * 0.6) - h_lbl / 2, "white")
+    # ==== Render DISKON ====
+    diskons = [
+        {"val": f"{diskon_utama}%", "label": "DISKON", "color": "red"},
+        {"val": f"+{diskon_member}%", "label": "MEMBER", "color": "blue"}
+    ]
+    d_spacing = r * 2 + int(W * 0.05)
+    d_start_x = cx - d_spacing // 2
+    for i, d in enumerate(diskons):
+        dx = d_start_x + i * d_spacing
+        draw.ellipse([dx - r, cy - r, dx + r, cy + r], fill=d["color"])
+        f_val = load_font(int(r * 0.6))
+        f_lbl = load_font(int(r * 0.25))
+        center_text(draw, d["val"], f_val, dx, cy - int(r * 0.2), "white")
+        center_text(draw, d["label"], f_lbl, dx, cy + int(r * 0.35), "white")
 
-    # Harga awal tercoret
-    base_y = cy + r + int(H * 0.02)
+    # ==== Harga Coret ====
+    base_y = cy + r + int(H * 0.03)
     t0 = format_rp(harga_awal) + f" /{satuan_harga}"
-    bbox0 = draw.textbbox((0,0), t0, font=f_strike)
+    bbox0 = draw.textbbox((0, 0), t0, font=f_strike)
     w0 = bbox0[2] - bbox0[0]
-    x0 = cx - w0 // 2 - int(r * 0.3)
+    x0 = cx - w0//2 - int(W * 0.03)
     draw.text((x0, base_y), t0, font=f_strike, fill="red")
-    draw.line(
-        [(x0, base_y + int(strike_sz * 0.3)), (x0 + w0, base_y + int(strike_sz * 0.3))],
-        fill="red", width=max(2, strike_sz // 10)
-    )
+    draw.line([(x0, base_y + strike_sz//2), (x0 + w0, base_y + strike_sz//2)], fill="red", width=2)
 
-    # Harga promo besar
+    # ==== Harga Promo ====
     t1 = format_rp(harga_promo) + f" /{satuan_harga}"
-    center_text(draw, t1, f_promo, cx, base_y + int(promo_sz * 0.6), "black")
+    center_text(draw, t1, f_promo, cx, base_y + int(promo_sz * 0.8), "black")
 
-    # Nama produk bawah
-    center_text(draw, nama_produk, f_prod, cx, H - int(H * 0.1), "black")
+    # ==== Nama Produk ====
+    center_text(draw, nama_produk.upper(), f_prod, cx, H - int(H * 0.08), "black")
 
-    # Preview & Download
+    # ==== Output ====
     st.image(bg, use_container_width=True)
-    buf = io.BytesIO(); bg.save(buf, "PNG")
+    buf = io.BytesIO()
+    bg.save(buf, format="PNG")
     st.download_button("⬇️ Download POP", buf.getvalue(), "POP_final.png", "image/png")
 
 else:
-    st.info("Upload background apa pun untuk preview real‑time.")
+    st.info("Upload background terlebih dahulu.")
