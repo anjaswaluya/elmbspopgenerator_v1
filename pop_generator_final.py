@@ -68,7 +68,7 @@ if bg_file and logo_files:
         bbox = draw.textbbox((0, 0), judul, font=font_judul)
         text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
     else:
-        text_w, text_h = draw.textsize(judul, font=font_judul)
+        text_w, text_h = font_judul.getsize(judul)
 
     text_x = (bg_width - text_w) // 2
     text_y = logo_y + int(logo_width / 1.6) + 25
@@ -76,7 +76,12 @@ if bg_file and logo_files:
 
     # Harga Normal (Coret)
     harga_text = f"Rp {harga_normal:,.0f}".replace(",", ".") + f"/{satuan}"
-    harga_w, harga_h = draw.textsize(harga_text, font=font_harga)
+    if hasattr(draw, "textbbox"):
+        bbox = draw.textbbox((0, 0), harga_text, font=font_harga)
+        harga_w, harga_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    else:
+        harga_w, harga_h = font_harga.getsize(harga_text)
+
     harga_x = int(bg_width * 0.3)
     harga_y = text_y + 100
     draw.text((harga_x, harga_y), harga_text, fill="red", font=font_harga)
@@ -84,7 +89,12 @@ if bg_file and logo_files:
 
     # Harga Promo
     promo_text = f"Rp {harga_promo:,.0f}".replace(",", ".") + f"/{satuan}"
-    promo_w, promo_h = draw.textsize(promo_text, font=font_promo)
+    if hasattr(draw, "textbbox"):
+        bbox = draw.textbbox((0, 0), promo_text, font=font_promo)
+        promo_w, promo_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    else:
+        promo_w, promo_h = font_promo.getsize(promo_text)
+
     promo_x = int(bg_width * 0.3)
     promo_y = harga_y + harga_h + 30
     draw.text((promo_x, promo_y), promo_text, fill="red", font=font_promo)
