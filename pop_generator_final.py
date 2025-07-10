@@ -37,6 +37,12 @@ def load_font(sz, bold=False):
     except:
         return ImageFont.load_default()
 
+# Helper: center text
+def center_text(draw, text, font, center_x, y, fill):
+    w, h = draw.textsize(text, font=font)
+    x = center_x - w // 2
+    draw.text((x, y), text, font=font, fill=fill)
+
 # Main execution
 if bg_file and logos:
     bg = Image.open(bg_file).convert("RGBA")
@@ -44,10 +50,10 @@ if bg_file and logos:
     draw = ImageDraw.Draw(bg)
 
     # Logo Produk Area
-    logo_h = int(H * 0.15)
+    logo_h = int(H * 0.09)
     n = min(len(logos), 6)
     gap = int((W - n * logo_h) / (n + 1))
-    y0 = int(H * 0.1)
+    y0 = int(H * 0.13)
 
     for i, f in enumerate(logos[:6]):
         im = Image.open(f).convert("RGBA")
@@ -59,26 +65,24 @@ if bg_file and logos:
 
     # Judul Produk
     font_title = load_font(title_size, bold=True)
-    tw, th = draw.textsize(title, font=font_title)
-    x_t = (W - tw) // 2
-    y_t = y0 + logo_h + int(H * 0.02)
-    draw.text((x_t, y_t), title, fill="black", font=font_title)
+    y_title = y0 + logo_h + int(H * 0.015)
+    center_text(draw, title, font_title, W // 2, y_title, fill="black")
 
     # Harga Coret
-    font_old = load_font(int(W * 0.02))
+    font_old = load_font(int(W * 0.022))
     old_txt = f"Rp {price_old:,.0f}".replace(",", ".") + f"/{unit}"
     ow, oh = draw.textsize(old_txt, font=font_old)
-    x_o = int(W * 0.30)
-    y_o = y_t + th + int(H * 0.04)
+    x_o = int(W * 0.15)
+    y_o = y_title + title_size + int(H * 0.04)
     draw.text((x_o, y_o), old_txt, fill="red", font=font_old)
     draw.line((x_o, y_o + oh // 2, x_o + ow, y_o + oh // 2), fill="red", width=2)
 
     # Harga Promo
-    font_new = load_font(int(W * 0.04), bold=True)
+    font_new = load_font(int(W * 0.045), bold=True)
     new_txt = f"Rp {price_new:,.0f}".replace(",", ".") + f"/{unit}"
     nw, nh = draw.textsize(new_txt, font=font_new)
-    x_n = x_o
-    y_n = y_o + oh + int(H * 0.02)
+    x_n = int(W * 0.15)
+    y_n = y_o + oh + int(H * 0.025)
     draw.text((x_n, y_n), new_txt, fill="red", font=font_new)
 
     # Display & Download
