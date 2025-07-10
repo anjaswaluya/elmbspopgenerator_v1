@@ -16,26 +16,31 @@ with col1:
 with col2:
     logo_files = st.file_uploader("Upload Logo Produk (maksimal 6 file)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
+st.subheader("📝 Input Judul POP")
+judul = st.text_input("Judul Produk:", "TRISENSA CERAMICS 80X80")
+judul_font_size = st.slider("Ukuran Font Judul", 10, 150, 50)
+
+# Font default bawaan sistem
+try:
+    font_judul = ImageFont.truetype("arial.ttf", judul_font_size)
+except:
+    font_judul = ImageFont.load_default()
+
+# Proses Gambar Jika Sudah Upload
 if bg_file and logo_files:
     bg_image = Image.open(bg_file).convert("RGBA")
     bg_width, bg_height = bg_image.size
-
-    st.subheader("📝 Input Judul POP")
-    judul = st.text_input("Judul Produk:", "TRISENSA CERAMICS 80X80")
-    judul_font_size = st.slider("Ukuran Font Judul", 10, 150, 50)
-
-    # Font default
-    try:
-        font_judul = ImageFont.truetype("arial.ttf", judul_font_size)
-    except:
-        font_judul = ImageFont.load_default()
-
     draw = ImageDraw.Draw(bg_image)
 
-    # Gambar judul di tengah atas
-    text_w, text_h = draw.textsize(judul, font=font_judul)
+    # Gambar Judul di Tengah
+    if hasattr(draw, "textbbox"):  # PIL >= 8.0
+        bbox = draw.textbbox((0, 0), judul, font=font_judul)
+        text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    else:  # fallback
+        text_w, text_h = draw.textsize(judul, font=font_judul)
+
     text_x = (bg_width - text_w) // 2
-    text_y = int(bg_height * 0.22)  # bawah logo sedikit
+    text_y = int(bg_height * 0.22)  # bawah logo
     draw.text((text_x, text_y), judul, fill="black", font=font_judul)
 
     # Gambar logo produk sejajar
@@ -55,16 +60,13 @@ if bg_file and logo_files:
         logo_x = start_x + i * (logo_width + spacing)
         bg_image.paste(resized_logo, (logo_x, logo_y), resized_logo)
 
-    st.subheader("📥 Ruang Kosong Siap Untuk:")
-    st.markdown("- Diskon Utama dan Member (akan ditambahkan nanti)")
-    st.markdown("- Harga Coret (Rp, satuan)")
-    st.markdown("- Harga Promo besar di bawahnya")
-
-    st.subheader("📦 Hasil Sementara")
+    # PREVIEW dan Download
+    st.subheader("🖼️ Preview")
     st.image(bg_image, caption="Preview POP", use_column_width=True)
 
     buffer = io.BytesIO()
     bg_image.save(buffer, format="PNG")
     st.download_button("⬇️ Download POP", data=buffer.getvalue(), file_name="POP.png", mime="image/png")
+
 else:
     st.info("Silakan upload background dan minimal 1 logo produk terlebih dahulu.")
