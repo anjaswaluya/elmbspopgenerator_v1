@@ -4,39 +4,35 @@ import io
 
 st.set_page_config(page_title="POP Generator Optimal", layout="wide")
 
-st.title("🎨 POP Generator Optimal")
-st.markdown("Buat desain brosur promo yang fun, simpel, dan powerful!")
+# Sidebar kiri (Upload & Pengaturan)
+with st.sidebar:
+    st.header("🎨 Pengaturan POP")
 
-st.subheader("📤 Upload Gambar")
+    bg_file = st.file_uploader("🖼️ Upload Background (rasio A4)", type=["jpg", "jpeg", "png"])
+    logo_files = st.file_uploader("📌 Upload Logo Produk (maks 6 file)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-col1, col2 = st.columns(2)
+    judul = st.text_input("✍️ Judul Produk:", "TRISENSA CERAMICS 80X80")
+    judul_font_size = st.slider("🔠 Ukuran Font Judul", 10, 150, 50)
 
-with col1:
-    bg_file = st.file_uploader("Upload Background (rasio A4)", type=["jpg", "jpeg", "png"])
-with col2:
-    logo_files = st.file_uploader("Upload Logo Produk (maksimal 6 file)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
-
-st.subheader("📝 Input Judul POP")
-judul = st.text_input("Judul Produk:", "TRISENSA CERAMICS 80X80")
-judul_font_size = st.slider("Ukuran Font Judul", 10, 150, 50)
-
-# Font default bawaan sistem
+# Default font
 try:
     font_judul = ImageFont.truetype("arial.ttf", judul_font_size)
 except:
     font_judul = ImageFont.load_default()
 
-# Proses Gambar Jika Sudah Upload
+# Preview & Proses di kanan
+st.title("📦 Preview Desain POP")
+
 if bg_file and logo_files:
     bg_image = Image.open(bg_file).convert("RGBA")
     bg_width, bg_height = bg_image.size
     draw = ImageDraw.Draw(bg_image)
 
-    # Gambar Judul di Tengah
-    if hasattr(draw, "textbbox"):  # PIL >= 8.0
+    # Hitung ukuran teks judul
+    if hasattr(draw, "textbbox"):  # PIL ≥ 8.0
         bbox = draw.textbbox((0, 0), judul, font=font_judul)
         text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    else:  # fallback
+    else:
         text_w, text_h = draw.textsize(judul, font=font_judul)
 
     text_x = (bg_width - text_w) // 2
@@ -60,8 +56,7 @@ if bg_file and logo_files:
         logo_x = start_x + i * (logo_width + spacing)
         bg_image.paste(resized_logo, (logo_x, logo_y), resized_logo)
 
-    # PREVIEW dan Download
-    st.subheader("🖼️ Preview")
+    # Preview
     st.image(bg_image, caption="Preview POP", use_column_width=True)
 
     buffer = io.BytesIO()
@@ -69,4 +64,4 @@ if bg_file and logo_files:
     st.download_button("⬇️ Download POP", data=buffer.getvalue(), file_name="POP.png", mime="image/png")
 
 else:
-    st.info("Silakan upload background dan minimal 1 logo produk terlebih dahulu.")
+    st.warning("Silakan upload background dan minimal 1 logo produk dulu di sidebar kiri.")
