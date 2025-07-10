@@ -4,7 +4,7 @@ import io
 
 # Setup
 st.set_page_config(page_title="POP Generator by ElMBS", layout="wide")
-st.title("🎯 POP Generator aLA ALA V1")
+st.title("🎯 POP Generator aLA ALA V1.1")
 
 # Sidebar UI
 with st.sidebar:
@@ -48,20 +48,31 @@ if bg_file and logos:
     draw = ImageDraw.Draw(bg)
 
     # Logo
-    logo_h = int(H * 0.15)
+    logo_h = int(H * 0.10)  # ✅ dikecilin jadi 10% tinggi gambar
     n = min(len(logos), 6)
-    gap = int((W - n * logo_h) / (n + 1))
     y0 = int(H * 0.1)
-    x_cursor = gap
-    for i, f in enumerate(logos[:6]):
-        im = Image.open(f).convert("RGBA")
+
+    if n == 1:
+        # Auto center kalau 1 logo
+        im = Image.open(logos[0]).convert("RGBA")
         ar = im.width / im.height
         w0 = int(logo_h * ar)
         im = im.resize((w0, logo_h), resample=Image.Resampling.LANCZOS)
-        bg.paste(im, (x_cursor, y0), im)
-        x_cursor += w0 + gap
+        x_center = (W - w0) // 2
+        bg.paste(im, (x_center, y0), im)
+    else:
+        # Multi logo layout
+        gap = int((W - n * logo_h) / (n + 1))
+        x_cursor = gap
+        for f in logos[:6]:
+            im = Image.open(f).convert("RGBA")
+            ar = im.width / im.height
+            w0 = int(logo_h * ar)
+            im = im.resize((w0, logo_h), resample=Image.Resampling.LANCZOS)
+            bg.paste(im, (x_cursor, y0), im)
+            x_cursor += w0 + gap
 
-    # Judul
+    # Judul Produk
     font_title = load_font(title_size, bold=True)
     y_title = y0 + logo_h + int(H * 0.02)
     center_text(draw, title, font_title, W // 2, y_title)
@@ -83,10 +94,9 @@ if bg_file and logos:
     draw.text((x_old, y_old + oh + int(H * 0.02)), new_txt, fill="red", font=font_new)
 
     # Output
-    st.image(bg, width=400)  # ✅ FIXED: Preview kecil biar gak ngegas satu layar
+    st.image(bg, width=400)  # ✅ live preview kecil dan rapi
     buf = io.BytesIO()
     bg.save(buf, format="PNG")
     st.download_button("⬇️ Download POP", buf.getvalue(), "POP_final.png", "image/png")
-
 else:
     st.info("Upload background + minimal 1 logo dulu ya abangku!")
