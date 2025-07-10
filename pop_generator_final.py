@@ -2,109 +2,97 @@ import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 import io
 
+# Page config
 st.set_page_config(page_title="POP Generator by ElMBS", layout="wide")
+st.title("🎯 POP Generator Final Fix")
 
-# Sidebar kiri: Upload dan Input
+# Sidebar: upload + input
 with st.sidebar:
-    st.header("🎨 POP Generator by ElMBS")
-
-    st.markdown("🖼️ **Gaskeun input background POP-nya abangku!! 🔥🔥**")
-    bg_file = st.file_uploader("Upload Background (rasio A4)", type=["jpg", "jpeg", "png"])
-
-    st.markdown("📌 **Cusss upload logonyaaa! Maksimal 6 ya, jangan barbar 😆**")
-    logo_files = st.file_uploader("Upload Logo Produk", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
-
+    st.header("🎨 Settings")
+    st.markdown("🖼️ **Gaskeun bg-nya!**")
+    bg_file = st.file_uploader("Upload Background (rasio A4)", type=["jpg","jpeg","png"])
+    st.markdown("📌 **Logo Produk (max 6)**")
+    logos = st.file_uploader("Upload Logo", type=["jpg","jpeg","png"], accept_multiple_files=True)
     st.markdown("---")
-    st.markdown("✍️ **Tulis nama produknya... yang jualan kamu, yang laku kita 🤝**")
-    judul = st.text_input("Judul Produk", "TRISENSA CERAMICS 80X80")
-    judul_font_size = st.slider("🔠 Geser fontnya biar judulnya makin cihuy! 😍", 10, 100, 42)
-
+    st.markdown("✍️ **Isi Judul POP**")
+    title = st.text_input("Judul Produk", "TRISENSA CERAMICS 80X80")
+    title_size = st.slider("Ukuran Font Judul", 10, 120, 50)
     st.markdown("---")
-    st.markdown("💰 **Masukin harga asli... tenang, nanti kita coret 😎**")
-    harga_normal = st.number_input("Harga Normal", value=269141)
+    st.markdown("💰 **Harga Coret**")
+    price_old = st.number_input("Harga Normal", value=269141)
+    st.markdown("🔥 **Harga Fix**")
+    price_new = st.number_input("Harga Promo", value=248013)
+    unit = st.text_input("Satuan (ex: m, pcs)", "m")
 
-    st.markdown("🔥 **Harga promo paling nendang? Masukin sini brooo 💸**")
-    harga_promo = st.number_input("Harga Promo", value=248013)
+# load fonts
+def load_font(sz, bold=False):
+    try:
+        return ImageFont.truetype("arialbd.ttf" if bold else "arial.ttf", sz)
+    except:
+        return ImageFont.load_default()
 
-    st.markdown("📏 **/m, /pcs, /dus, bebas bang... asal jangan /mantan 😅**")
-    satuan = st.text_input("Satuan", value="m")
+# draw if both bg and at least one logo
+if bg_file and logos:
+    bg = Image.open(bg_file).convert("RGBA")
+    W, H = bg.size
+    draw = ImageDraw.Draw(bg)
 
-# Font default
-try:
-    font_judul = ImageFont.truetype("arial.ttf", judul_font_size)
-    font_harga = ImageFont.truetype("arial.ttf", 36)
-    font_promo = ImageFont.truetype("arial.ttf", 60)
-except:
-    font_judul = ImageFont.load_default()
-    font_harga = ImageFont.load_default()
-    font_promo = ImageFont.load_default()
+    # --- Logo Produk (diperkecil ke 40% width total) ---
+    max_n = min(6, len(logos))
+    total_w = int(W * 0.4)
+    gap = int(W * 0.02)
+    single = (total_w - gap*(max_n-1)) // max_n
+    start = (W - total_w)//2
+    y0 = int(H * 0.08)
 
-# Halaman utama (preview)
-st.title("📦 Preview Desain POP Abangkuu!")
+    for i, f in enumerate(logos[:6]):
+        im = Image.open(f).convert("RGBA")
+        h0 = single
+        w0 = int(im.width/im.height * h0)
+        im = im.resize((w0, h0), resample=Image.Resampling.LANCZOS)
+        x0 = start + i*(single+gap)
+        bg.paste(im, (x0, y0), im)
 
-if bg_file and logo_files:
-    bg_image = Image.open(bg_file).convert("RGBA")
-    bg_width, bg_height = bg_image.size
-    draw = ImageDraw.Draw(bg_image)
-
-    # Logo Produk
-    max_logo = min(6, len(logo_files))
-    spacing = 20
-    total_logo_width = int(bg_width * 0.6)
-    logo_area_width = total_logo_width - (spacing * (max_logo - 1))
-    logo_width = logo_area_width // max_logo
-    logo_y = int(bg_height * 0.08)
-    start_x = (bg_width - total_logo_width) // 2
-
-    for i, logo_file in enumerate(logo_files[:6]):
-        logo = Image.open(logo_file).convert("RGBA")
-        aspect_ratio = logo.width / logo.height
-        resized_logo = logo.resize((logo_width, int(logo_width / aspect_ratio)))
-        logo_x = start_x + i * (logo_width + spacing)
-        bg_image.paste(resized_logo, (logo_x, logo_y), resized_logo)
-
-    # Judul Produk
+    # --- Judul di bawah logo ---
+    font_title = load_font(title_size, bold=True)
     if hasattr(draw, "textbbox"):
-        bbox = draw.textbbox((0, 0), judul, font=font_judul)
-        text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        b = draw.textbbox((0,0), title, font=font_title)
+        tw, th = b[2]-b[0], b[3]-b[1]
     else:
-        text_w, text_h = font_judul.getsize(judul)
+        tw, th = draw.textsize(title, font=font_title)
+    x_t = (W-tw)//2
+    y_t = y0 + single + int(H*0.02)
+    draw.text((x_t, y_t), title, fill="black", font=font_title)
 
-    text_x = (bg_width - text_w) // 2
-    text_y = logo_y + int(logo_width / 1.6) + 25
-    draw.text((text_x, text_y), judul, fill="black", font=font_judul)
-
-    # Harga Normal (Coret)
-    harga_text = f"Rp {harga_normal:,.0f}".replace(",", ".") + f"/{satuan}"
+    # --- Harga Coret (kecil & merah) ---
+    font_old = load_font(int(W*0.02))
+    old_txt = f"Rp {price_old:,.0f}".replace(",",".") + f"/{unit}"
     if hasattr(draw, "textbbox"):
-        bbox = draw.textbbox((0, 0), harga_text, font=font_harga)
-        harga_w, harga_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        b2 = draw.textbbox((0,0), old_txt, font=font_old)
+        ow, oh = b2[2]-b2[0], b2[3]-b2[1]
     else:
-        harga_w, harga_h = font_harga.getsize(harga_text)
+        ow, oh = draw.textsize(old_txt, font=font_old)
+    x_o = int(W*0.25)
+    y_o = y_t + th + int(H*0.03)
+    draw.text((x_o, y_o), old_txt, fill="red", font=font_old)
+    draw.line((x_o, y_o+oh//2, x_o+ow, y_o+oh//2), fill="red", width=2)
 
-    harga_x = int(bg_width * 0.3)
-    harga_y = text_y + 100
-    draw.text((harga_x, harga_y), harga_text, fill="red", font=font_harga)
-    draw.line((harga_x, harga_y + harga_h // 2, harga_x + harga_w, harga_y + harga_h // 2), fill="red", width=3)
-
-    # Harga Promo
-    promo_text = f"Rp {harga_promo:,.0f}".replace(",", ".") + f"/{satuan}"
+    # --- Harga Fix (besar & bold) ---
+    font_new = load_font(int(W*0.04), bold=True)
+    new_txt = f"Rp {price_new:,.0f}".replace(",",".") + f"/{unit}"
     if hasattr(draw, "textbbox"):
-        bbox = draw.textbbox((0, 0), promo_text, font=font_promo)
-        promo_w, promo_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        b3 = draw.textbbox((0,0), new_txt, font=font_new)
+        nw, nh = b3[2]-b3[0], b3[3]-b3[1]
     else:
-        promo_w, promo_h = font_promo.getsize(promo_text)
+        nw, nh = draw.textsize(new_txt, font=font_new)
+    x_n = x_o
+    y_n = y_o + oh + int(H*0.02)
+    draw.text((x_n, y_n), new_txt, fill="red", font=font_new)
 
-    promo_x = int(bg_width * 0.3)
-    promo_y = harga_y + harga_h + 30
-    draw.text((promo_x, promo_y), promo_text, fill="red", font=font_promo)
-
-    # Preview dan Download
-    st.image(bg_image, caption="🔥 Preview POP kamu siap download!")
-
-    buffer = io.BytesIO()
-    bg_image.save(buffer, format="PNG")
-    st.download_button("⬇️ Download POP", data=buffer.getvalue(), file_name="POP_final.png", mime="image/png")
+    # --- Preview & Download ---
+    st.image(bg, use_column_width=True)
+    buf = io.BytesIO(); bg.save(buf, format="PNG")
+    st.download_button("⬇️ Download POP", buf.getvalue(), "POP_final.png", "image/png")
 
 else:
-    st.warning("📢 Upload background dan minimal 1 logo dulu ya abangku!")
+    st.info("Upload background + minimal 1 logo dulu, baru kita gaskeun!")
