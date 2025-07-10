@@ -1,4 +1,3 @@
-initial setup: streamlit layout final pop generator
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 import io
